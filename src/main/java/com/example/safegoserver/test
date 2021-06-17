@@ -1,0 +1,155 @@
+-- FUNCTION: public.rpt_proc_requisition_directory(character varying, character varying)
+
+-- DROP FUNCTION public.rpt_proc_requisition_directory(character varying, character varying);
+
+CREATE OR REPLACE FUNCTION public.rpt_proc_requisition_directory(
+	p_fromdate character varying,
+	p_todate character varying,
+	OUT "Requisition No" character varying,
+	OUT "Requisition Date" character varying,
+	OUT "Initial Requisition Approved Date" character varying,
+	OUT "Requisition Approved Date Latest" character varying,
+	OUT "Review Status Y/N" text,
+	OUT "No of Review" bigint,
+	OUT "Reviewed by ID Latest" character varying,
+	OUT "Reviewed by Name Latest" character varying,
+	OUT "Review Date Latest" character varying,
+	OUT "Item Assign Date" character varying,
+	OUT "Item Accept Date" character varying,
+	OUT "Office ID" character varying,
+	OUT "Office Name" character varying,
+	OUT "Program" character varying,
+	OUT "Project" text,
+	OUT "Source Of Fund" character varying,
+	OUT "Budget Code" character varying,
+	OUT "FA No" character varying,
+	OUT "Vehicle No" character varying,
+	OUT "Item Group" character varying,
+	OUT "Item Category" character varying,
+	OUT "Item Sub Category" character varying,
+	OUT "Item Code" bigint,
+	OUT "Item" character varying,
+	OUT "Item Specification" text,
+	OUT "UoM" character varying,
+	OUT "Quantity" double precision,
+	OUT "Unit Price" double precision,
+	OUT "Total" double precision,
+	OUT "Assigned by ID" character varying,
+	OUT "Assigned by Name" character varying,
+	OUT "Assigned Person ID" character varying,
+	OUT "Assigned Person Name" character varying,
+	OUT "Requisition Proposer ID" character varying,
+	OUT "Requisition Proposer Name" character varying,
+	OUT "Budget Recommender ID" character varying,
+	OUT "Budget Recommender Name" character varying,
+	OUT "Requisition Approver ID" character varying,
+	OUT "Requisition Approver Name" character varying,
+	OUT "Status" character varying)
+    RETURNS SETOF record
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+-- declare local variables
+DECLARE
+        v_prepareQuery                     VARCHAR(21840) DEFAULT '';
+        v_condition_common_date            VARCHAR(1000) DEFAULT '';
+        v_condition_common_requistion      VARCHAR(1000) DEFAULT '';
+
+        v_condition_wo 	        	   VARCHAR(1000) DEFAULT '';
+        v_condition_dp          	   VARCHAR(1000) DEFAULT '';
+        v_condition          	   VARCHAR(1000) DEFAULT '';
+	refcur refcursor        	   DEFAULT 'test';
+
+BEGIN
+  IF((p_fromdate != '' AND p_fromdate  IS NOT NULL) AND (p_todate != '' AND p_todate IS NOT NULL)) THEN
+	v_condition =CONCAT(' AND pr.requisition_date between ','''',p_fromdate,'''',' AND ','''',p_todate,'''','');
+  END IF;
+
+	 /****************************History****************************/
+	 -- Name : rpt_proc_requisition_directory
+	 -- Created Date (dd/MM/yyyy): 28-02-2021
+	 -- Created By : Md Zahid Al Fauruqe
+	 -- Modified Date (dd/MM/yyyy):
+	 -- Modified By :
+	 -- Reason :
+	 -- Execute : SELECT * FROM rpt_proc_requisition_directory('parameter');
+	 /***************************************************************/
+
+	-- prepare variable data based on given input
+
+	-- prepare query
+v_prepareQuery := CONCAT('SELECT
+pr.requisition_no AS "Requisition No",
+TO_CHAR(pr.requisition_date, ''dd/mm/yyyy hh12:mi AM'') AS "Requisition Date",
+COALESCE(TO_CHAR(pr.initial_approve_date, ''dd/mm/yyyy hh12:mi AM''),''-'') AS "Req Initial Approval Date",
+COALESCE(TO_CHAR(pr.budget_approval_date, ''dd/mm/yyyy hh12:mi AM''),''-'') AS "Req Approval Date",
+CASE WHEN prd.review_no  = 0 THEN ''No'' ELSE ''Yes'' END "Review Status",
+prd.review_no "Review No",
+COALESCE(vprl.reviewed_by_pin,''-'') AS "reviewed_by_pin",
+COALESCE(vprl.reviewed_by_name,''-'') AS "reviewed_by_name",
+COALESCE(TO_CHAR(vprl.review_date, ''dd/mm/yyyy hh12:mi AM''),''-'') AS "Review date",
+COALESCE(TO_CHAR(prd.assign_date, ''dd/mm/yyyy hh12:mi AM''),''-'') AS "Item Assign Date",
+COALESCE(TO_CHAR(prd.accept_date, ''dd/mm/yyyy hh12:mi AM''),''-'') AS "Item Accept Date",
+poi.office_code as "Office Code",
+poi.office_name as "Office Name",
+pri.program_name as "Program Name",
+concat(pi.project_code,'' '',pi.project_name) AS "Project Name",
+sof.name as "Source Of Fund",
+CASE WHEN prd.budget_code  = null THEN pr.budget_code ELSE prd.budget_code END "Budget Code",
+COALESCE(fr.agreement_no,''-'') "FA No",
+COALESCE(ci.car_number,''-'') "Vehicle No",
+ig.name as "Item Group",
+ic.category_name as 	"Item Category",
+icg.group_name as "Item Subcategory",
+ii.item_code AS "Item code",
+ii.item_name AS "Item Name",
+prd.item_specification AS "Item Specification",
+imu.unit_name AS "UoM",
+prd.quantity AS "Quantity",
+prd.unit_price AS "Unit Price",
+prd.quantity * prd.unit_price "Total",
+COALESCE(vpal.assigned_by_pin,''-'') AS "Assigned Person PIN",
+COALESCE(vpal.assigned_by_name,''-'')  AS "Assigned Person Name",
+COALESCE(eci.pin_no,''-'')  AS "Assigned pin",
+COALESCE(eci.first_name,''-'') AS "Assigned name",
+COALESCE(eciPro.pin_no,''-'')  AS "Requisition pin",
+COALESCE(eciPro.first_name,''-'')g  AS "Requisition name",
+COALESCE(eciRec.pin_no,''-'') AS "Budget pin",
+COALESCE(eciRec.first_name,''-'') AS "Budget name",
+COALESCE(eciApp.pin_no,''-'') AS "Requisition pin",
+COALESCE(eciApp.first_name,''-'') AS "Requisition name",
+COALESCE(ps.name,''-'') "Status"
+FROM
+proc_requisition pr
+INNER JOIN Source_Of_Fund sof ON sof.id = pr.source_of_fund AND pr.domain_status_id=1
+INNER JOIN project_info pi ON (pr.project_info_id=pi.id)
+INNER JOIN program_info pri on pri.id = pi.program_info_id
+INNER JOIN proc_requisition_details prd ON (prd.requisition_id=pr.id AND prd.domain_status_id=1)
+INNER JOIN item_information ii ON (ii.id=prd.item_information_id)
+INNER JOIN item_measurement_unit imu ON (imu.id=prd.measurement_unit_id)
+INNER JOIN item_category ic ON ic.id = ii.item_category_id
+INNER JOIN item_class ig ON ig.id = ii.item_class_id
+INNER JOIN item_category_group icg ON icg.id = ii.item_category_group_id
+INNER JOIN physical_Office_info poi ON (poi.id=pr.office_id)
+INNER JOIN proc_status ps ON ps.id = pr.status_id
+LEFT JOIN (select eci.id, eci.pin_no, eci.first_name from employee_core_info eci) eci ON (eci.id=prd.assigned_to)
+LEFT JOIN v_proc_reviewer_list vprl ON vprl.requisition_details_id = prd.id
+LEFT JOIN framework_details fd ON fd.id = prd.framework_details_id
+LEFT JOIN framework fr ON fr.id = fd.framework_id
+LEFT JOIN car_number ci ON ci.id = prd.car_number_id
+LEFT JOIN v_proc_assigned_by_list vpal ON vpal.requisition_details_id = prd.id
+LEFT JOIN (select eci.id, eci.pin_no, eci.first_name from employee_core_info eci) eciApp ON (eciApp.id=pr.approver_by)
+LEFT JOIN (select eci.id, eci.pin_no, eci.first_name from employee_core_info eci) eciRec ON (eciRec.id=pr.recommender_by)
+LEFT JOIN (select eci.id, eci.pin_no, eci.first_name from employee_core_info eci) eciPro ON (eciPro.id=pr.proposer_by)
+WHERE
+1=1 ',v_condition,'
+AND pr.office_id  not in (SELECT name FROM tender_status where id = 41)
+Order By pr.requisition_date ASC, pr.requisition_no ASC');
+ RETURN QUERY EXECUTE v_prepareQuery;
+END;
+$BODY$;
+
+
