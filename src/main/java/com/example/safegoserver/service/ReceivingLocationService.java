@@ -38,6 +38,6 @@ public class ReceivingLocationService {
     }
 
     public ReceiveLocation getReceiveLocationByReceiverPhoneNumber(String phoneNumber) {
-        return receivingLocationRepository.findFirstByReceiverPhoneNumber(phoneNumber);
+        return receivingLocationRepository.findTopByReceiverPhoneNumberOrderByIdDesc(phoneNumber);
     }
 }

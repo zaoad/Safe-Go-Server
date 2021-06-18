@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface ReceivingLocationRepository extends CrudRepository<ReceiveLocation, String> {
 
-    ReceiveLocation findFirstByReceiverPhoneNumber(String phoneNumber);
+    ReceiveLocation findTopByReceiverPhoneNumberOrderByIdDesc(String phoneNumber);
 }

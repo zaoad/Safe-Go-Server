@@ -8,5 +8,5 @@ import java.util.Optional;
 
 public interface AppTokenRepository extends CrudRepository<AppToken, String> {
 
-    AppToken findFirstByPhoneNumber(String phoneNumber);
+    AppToken findTopByPhoneNumberOrderByIdDesc(String phoneNumber);
 }

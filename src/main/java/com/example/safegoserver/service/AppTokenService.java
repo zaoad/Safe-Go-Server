@@ -23,7 +23,7 @@ public class AppTokenService {
     }
 
     public AppToken getAppTokenByPhoneNumber(String phoneNumber) {
-        return appTokenRepository.findFirstByPhoneNumber(phoneNumber);
+        return appTokenRepository.findTopByPhoneNumberOrderByIdDesc(phoneNumber);
     }
 
     public boolean addAppToken(AppToken appToken) {
