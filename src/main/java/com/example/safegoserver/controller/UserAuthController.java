@@ -32,7 +32,7 @@ public class UserAuthController {
     }
 
     @RequestMapping(method= RequestMethod.POST,value="userauths")
-    public SimpleApiResponse addUserAuth(@RequestBody UserAuth userAuth) throws JSONException {
+    public SimpleApiResponse addUserAuth(@RequestBody UserAuth userAuth) {
         SimpleApiResponse simpleApiResponse=new SimpleApiResponse();
         simpleApiResponse.setMessage(Constant.MESSAGE_SUCCESSFUL);
         simpleApiResponse.setStatus(String.valueOf(HttpStatus.OK));
@@ -49,7 +49,7 @@ public class UserAuthController {
     }
 
     @RequestMapping(method=RequestMethod.PUT,value="userauths/{id}")
-    public void updateUserAuth(@PathVariable String id,@RequestBody UserAuth userAuth)
+    public void updateUserAuth(@PathVariable String id, @RequestBody UserAuth userAuth)
     {
         userAuthService.updateUserAuth(id,userAuth);
     }
